@@ -8,10 +8,10 @@ from loguru import logger
 
 from src.infrastructure.config.settings import settings
 from src.infrastructure.database.postgres_client import PostgresConnectionClient
+from src.interfaces.api.auth.controller import auth_router
 from src.interfaces.api.health_check.controller import health_check_router
 from src.interfaces.api.v1.customer.controller import customer_v1_router
 from src.interfaces.api.v1.favorite.controller import favorite_v1_router
-from src.interfaces.api.auth.controller import auth_router
 from src.utils.trace_id import configure_trace_id
 
 
@@ -71,6 +71,7 @@ async def custom_http_exception_handler(
             "message": message,
             "error": str(exc.detail),
         },
+        headers=getattr(exc, "headers", None),
     )
 
 

@@ -1,19 +1,34 @@
-from fastapi import Depends
-from fastapi.security import OAuth2PasswordBearer
-from jose import jwt, JWTError
+from typing import Annotated
 
-SECRET_KEY = "your_secret_key"
-ALGORITHM = "HS256"
+import jwt
+from fastapi import Depends, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+from src.interfaces.api.auth.exceptions import AuthenticationException
+from src.interfaces.api.auth.security import decode_access_token
+
+bearer_scheme = HTTPBearer(auto_error=False)
 
 
-def get_current_user(token: str = Depends(oauth2_scheme)) -> str:
+def get_current_user(
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
+) -> str:
+    if credentials is None:
+        raise _unauthorized("Your access token is missing.")
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id: str = payload.get("sub")
-        if user_id is None:
-            raise ValueError("Invalid token")
-        return user_id
-    except JWTError:
-        raise ValueError("Invalid token")
+        payload = decode_access_token(credentials.credentials)
+    except jwt.ExpiredSignatureError:
+        raise _unauthorized("Your access token has expired.")
+    except jwt.InvalidTokenError:
+        raise _unauthorized("Your access token is invalid.")
+    return payload["sub"]
+
+
+def _unauthorized(detail: str) -> AuthenticationException:
+    exception = AuthenticationException(
+        title="Unauthorized",
+        detail=detail,
+        status_code=status.HTTP_401_UNAUTHORIZED,
+    )
+    exception.headers = {"WWW-Authenticate": "Bearer"}
+    return exception

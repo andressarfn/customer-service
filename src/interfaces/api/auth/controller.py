@@ -1,15 +1,12 @@
 from typing import Annotated
-from fastapi import APIRouter, Body
 
-from fastapi import status
-from jose import jwt
+from fastapi import APIRouter, Body, status
 from passlib.hash import bcrypt
 
+from src.infrastructure.config.settings import settings
 from src.interfaces.api.auth.exceptions import AuthenticationException
 from src.interfaces.api.auth.schemas import LoginRequest, TokenResponse
-
-SECRET_KEY = "your_secret_key"
-ALGORITHM = "HS256"
+from src.interfaces.api.auth.security import create_access_token
 
 auth_router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -30,15 +27,16 @@ fake_user = {
 async def login(
     data: Annotated[LoginRequest, Body(..., description="Login Data")],
 ) -> TokenResponse:
-    if data.email != fake_user["email"] or not bcrypt.verify(
-        data.password, fake_user["hashed_password"]
-    ):
+    # Always verify the password so the response time does not reveal
+    # whether the email exists.
+    password_matches = bcrypt.verify(data.password, fake_user["hashed_password"])
+    if data.email != fake_user["email"] or not password_matches:
         raise AuthenticationException(
             title="Invalid credentials",
             detail="The provided email or password is incorrect.",
             status_code=status.HTTP_401_UNAUTHORIZED,
         )
-    token = jwt.encode(
-        {"sub": str(fake_user["user_id"])}, SECRET_KEY, algorithm=ALGORITHM
+    token = create_access_token(str(fake_user["user_id"]))
+    return TokenResponse(
+        access_token=token, expires_in=settings.JWT_EXPIRES_MINUTES * 60
     )
-    return TokenResponse(access_token=token, expires_in=3600)
