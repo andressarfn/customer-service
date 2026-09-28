@@ -1,0 +1,42 @@
+x-networks-config: &network-config
+  networks:
+    - app-network
+  extra_hosts:
+    - "localhost:host-gateway"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+    ports:
+      - '8081:80'
+    command: python3 -m uvicorn src.main:app --host 0.0.0.0 --port 80 --loop uvloop --workers 1
+    healthcheck:
+      test: curl --fail http://localhost:80/ready || exit 1
+      start_period: 10s
+      interval: 10m
+      retries: 5
+      timeout: 10s
+    <<: *network-config
+  postgres:
+    image: postgres:latest
+    container_name: postgres-customer-service
+    restart: always
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: rootpass
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./scripts/database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    <<: *network-config
+
+networks:
+  app-network:
+    driver: bridge

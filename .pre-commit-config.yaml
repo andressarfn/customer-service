@@ -1,0 +1,17 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: trailing-whitespace
+
+  - repo: local
+    hooks:
+      - id: lint
+        name: Code lint
+        entry: make lint
+        language: system
+        always_run: true
+        stages: [pre-commit]
+        pass_filenames: false
