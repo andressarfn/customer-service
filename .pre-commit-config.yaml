@@ -10,7 +10,7 @@ repos:
     hooks:
       - id: lint
         name: Code lint
-        entry: make lint
+        entry: make -C backend lint
         language: system
         always_run: true
         stages: [pre-commit]

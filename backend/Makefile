@@ -19,10 +19,10 @@ start: check-deps
 	uvicorn src.main:app --port 8081 --loop uvloop --reload
 
 start-containers: check-deps
-	docker compose up --build
+	docker compose -f ../docker-compose.yaml up --build
 
 reload-volumes:
-	docker compose down --volumes
+	docker compose -f ../docker-compose.yaml down --volumes
 
 create-env:
 	cp .env.example .env
