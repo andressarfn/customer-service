@@ -152,12 +152,49 @@ Abra o Swagger para testar endpoints, ver schemas e experimentar requisições d
 
 Todas as rotas `/v1` exigem um token JWT no header `Authorization: Bearer <token>`. As rotas `/ready` e `/auth/login` são públicas.
 
-O login usa um usuário fixo de demonstração, definido em `src/interfaces/api/auth/controller.py`:
+### Usuário
 
-- email: `user@example.com`
-- senha: `senha123`
+Não há cadastro de usuários: o login usa um usuário fixo de demonstração, definido em `src/interfaces/api/auth/controller.py`:
 
-Exemplo:
+| Campo    | Valor              |
+|----------|--------------------|
+| email    | `user@example.com` |
+| senha    | `senha123`         |
+| user_id  | `1`                |
+
+Esse usuário serve apenas para autenticar na API e não tem relação com os registros da tabela `customers`. A senha é armazenada como hash bcrypt e o email precisa ser um email válido (`EmailStr`).
+
+### Gerando o token
+
+Faça login em `POST /auth/login`:
+
+```sh
+curl -X POST http://localhost:8081/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "user@example.com", "password": "senha123"}'
+```
+
+Resposta:
+
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer",
+  "expires_in": 3600
+}
+```
+
+O `access_token` é um JWT assinado com `JWT_SECRET_KEY` usando `JWT_ALGORITHM` (padrão `HS256`). O payload contém:
+
+- `sub`: id do usuário autenticado (`"1"`)
+- `iat`: data de emissão
+- `exp`: data de expiração (`iat` + `JWT_EXPIRES_MINUTES`)
+
+`expires_in` vem em segundos. Trocar a `JWT_SECRET_KEY` invalida todos os tokens já emitidos.
+
+### Usando o token
+
+Envie o token no header `Authorization` com o prefixo `Bearer`:
 
 ```sh
 TOKEN=$(curl -s -X POST http://localhost:8081/auth/login \
@@ -167,7 +204,24 @@ TOKEN=$(curl -s -X POST http://localhost:8081/auth/login \
 curl http://localhost:8081/v1/customer/1 -H "Authorization: Bearer $TOKEN"
 ```
 
-O token expira após `JWT_EXPIRES_MINUTES` (o campo `expires_in` da resposta vem em segundos). Requisições sem token, com token inválido ou expirado retornam `401 Unauthorized`.
+Pelo Swagger (`/docs`):
+
+1. Execute `POST /auth/login` e copie o `access_token` da resposta.
+2. Clique em **Authorize** e cole apenas o token (sem o prefixo `Bearer`, o Swagger adiciona sozinho).
+3. As chamadas às rotas `/v1` passam a enviar o header automaticamente.
+
+### Erros de autenticação
+
+Todos retornam `401 Unauthorized` no formato `{"message": "HTTP Error", "error": "<mensagem>"}`. Os erros de token nas rotas `/v1` também enviam o header `WWW-Authenticate: Bearer`.
+
+| Situação                          | `error` na resposta                               |
+|-----------------------------------|---------------------------------------------------|
+| Email ou senha incorretos (login) | `The provided email or password is incorrect.`    |
+| Header `Authorization` ausente    | `Your access token is missing.`                   |
+| Token expirado                    | `Your access token has expired.`                  |
+| Token inválido ou mal assinado    | `Your access token is invalid.`                   |
+
+Quando o token expirar, basta fazer login novamente.
 
 ### Endpoints da aplicação
 
