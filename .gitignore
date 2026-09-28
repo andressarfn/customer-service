@@ -50,3 +50,6 @@ cert/
 *.tmp
 *.python-version
 *.log
+
+# macOS
+.DS_Store
