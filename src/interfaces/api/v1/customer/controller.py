@@ -27,9 +27,10 @@ from src.interfaces.api.v1.customer.schema import (
     CustomerRequestSchema,
     CustomerResponseSchema,
 )
-from src.interfaces.api.v1.exceptions import AccessTokenInvalidException
 
-customer_v1_router = APIRouter(prefix="/v1", tags=["Customer"])
+customer_v1_router = APIRouter(
+    prefix="/v1", tags=["Customer"], dependencies=[Depends(get_current_user)]
+)
 
 
 @customer_v1_router.post(
@@ -42,15 +43,8 @@ customer_v1_router = APIRouter(prefix="/v1", tags=["Customer"])
 async def create_customer(
     schema: Annotated[CustomerRequestSchema, Body(..., description="Create Customer")],
     session: Annotated[AsyncSession, Depends(PostgresConnectionClient.session)],
-    current_user: Annotated[str, Depends(get_current_user)],
 ) -> CustomerResponseSchema:
     try:
-        if not current_user:
-            raise AccessTokenInvalidException(
-                title="Unauthorized",
-                detail="Your access token is missing or invalid.",
-                status_code=status.HTTP_401_UNAUTHORIZED,
-            )
         customer_input_dto = CustomerInputDTO(**schema.model_dump())
         customer_input_entity = CustomerMapper.to_entity(customer_input_dto)
 
@@ -79,15 +73,8 @@ async def create_customer(
 async def get_customer(
     customer_id: Annotated[int, Path(..., description="Customer ID")],
     session: Annotated[AsyncSession, Depends(PostgresConnectionClient.session)],
-    current_user: Annotated[str, Depends(get_current_user)],
 ) -> CustomerResponseSchema:
     try:
-        if not current_user:
-            raise AccessTokenInvalidException(
-                title="Unauthorized",
-                detail="Your access token is missing or invalid.",
-                status_code=status.HTTP_401_UNAUTHORIZED,
-            )
         use_case = GetCustomerUseCase(
             customer_repository=CustomerRepository(session),
         )
@@ -113,15 +100,8 @@ async def update_customer(
     customer_id: Annotated[int, Path(..., description="Customer ID")],
     schema: Annotated[CustomerRequestSchema, Body(..., description="Update Customer")],
     session: Annotated[AsyncSession, Depends(PostgresConnectionClient.session)],
-    current_user: Annotated[str, Depends(get_current_user)],
 ) -> CustomerResponseSchema:
     try:
-        if not current_user:
-            raise AccessTokenInvalidException(
-                title="Unauthorized",
-                detail="Your access token is missing or invalid.",
-                status_code=status.HTTP_401_UNAUTHORIZED,
-            )
         customer_input_dto = CustomerInputDTO(**schema.model_dump())
         customer_input_entity = CustomerMapper.to_entity(customer_input_dto)
 
@@ -151,15 +131,8 @@ async def update_customer(
 async def delete_customer(
     customer_id: Annotated[int, Path(..., description="Customer ID")],
     session: Annotated[AsyncSession, Depends(PostgresConnectionClient.session)],
-    current_user: Annotated[str, Depends(get_current_user)],
 ) -> None:
     try:
-        if not current_user:
-            raise AccessTokenInvalidException(
-                title="Unauthorized",
-                detail="Your access token is missing or invalid.",
-                status_code=status.HTTP_401_UNAUTHORIZED,
-            )
         use_case = DeleteCustomerUseCase(
             customer_repository=CustomerRepository(session),
         )
